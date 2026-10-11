@@ -1,0 +1,20 @@
+cff-version: 1.2.0
+message: "If you use this software, please cite it using the metadata below."
+type: software
+title: "The Delegation Ledger"
+abstract: >-
+  A second, hash-chained book of what each agent owes before it acts, set against the runs the tool executor records, reporting where the two disagree.
+authors:
+  - family-names: Tinholt
+    given-names: Dinand
+version: 0.2.1
+date-released: 2026-10-11
+license: Apache-2.0
+repository-code: "https://github.com/dtinholt/delegation-ledger"
+url: "https://dinand.com/experiments/delegation-ledger/"
+keywords:
+  - agents
+  - audit
+  - hash chain
+  - omissions
+  - LLM

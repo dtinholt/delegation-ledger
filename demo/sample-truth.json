@@ -1,0 +1,98 @@
+{
+  "generator": "demo/make_sample.py",
+  "note": "Simulation from published coefficients, not a deployed system. Amounts and times are made up.",
+  "requisitions": [
+    {
+      "task_id": "R-0101",
+      "condition": "N",
+      "label": "no fault",
+      "true_amount": "1840"
+    },
+    {
+      "task_id": "R-0102",
+      "condition": "O1",
+      "label": "skipped step",
+      "true_amount": "7320",
+      "step": "check_vendor"
+    },
+    {
+      "task_id": "R-0103",
+      "condition": "N",
+      "label": "no fault",
+      "true_amount": "3275"
+    },
+    {
+      "task_id": "R-0104",
+      "condition": "O2",
+      "label": "skipped step, diary claims it was done",
+      "true_amount": "12480",
+      "step": "request_approval",
+      "diary_claim": "R-0104: request_approval done."
+    },
+    {
+      "task_id": "R-0105",
+      "condition": "C1",
+      "label": "wrong amount",
+      "true_amount": "5955",
+      "step": "post_invoice",
+      "posted": "9555"
+    },
+    {
+      "task_id": "R-0106",
+      "condition": "N",
+      "label": "no fault",
+      "true_amount": "9160"
+    },
+    {
+      "task_id": "R-0107",
+      "condition": "C2",
+      "label": "wrong amount on both sides",
+      "true_amount": "6418",
+      "assigned_and_posted": "4618"
+    },
+    {
+      "task_id": "R-0108",
+      "condition": "EXTRA",
+      "label": "a step nobody owed",
+      "true_amount": "2210",
+      "step": "expedite_shipping"
+    },
+    {
+      "task_id": "R-0109",
+      "condition": "OPEN",
+      "label": "in progress, not late",
+      "true_amount": "15200"
+    },
+    {
+      "task_id": "R-0110",
+      "condition": "CLOSED",
+      "label": "closed by the commissioner before it finished",
+      "true_amount": "4380"
+    }
+  ],
+  "expected_balance": {
+    "as_of": "2026-10-09T00:00:00Z",
+    "skipped": [
+      "R-0102/buyer/check_vendor",
+      "R-0104/buyer/request_approval",
+      "R-0110/buyer/create_po",
+      "R-0110/buyer/post_goods_receipt",
+      "R-0110/payables/post_invoice",
+      "R-0110/payables/schedule_payment"
+    ],
+    "amount": [
+      "R-0105/payables/post_invoice"
+    ],
+    "unowed": [
+      "R-0108/buyer/expedite_shipping"
+    ],
+    "open": [
+      "R-0109/buyer/post_goods_receipt",
+      "R-0109/buyer/request_approval",
+      "R-0109/payables/post_invoice",
+      "R-0109/payables/schedule_payment"
+    ],
+    "head": "37496cd9069c74f916f6f2e3016297196d486d6f148472f823825398d7b7b18f",
+    "entries": 122
+  }
+}

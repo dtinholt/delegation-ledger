@@ -1,0 +1,24 @@
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "delegationledger"
+version = "0.2.1"
+description = "Record what each agent owes before it acts, record what ran, and report where the two books disagree."
+requires-python = ">=3.9"
+license = { text = "Apache-2.0" }
+authors = [{ name = "Dinand Tinholt" }]
+readme = "README.md"
+classifiers = ["License :: OSI Approved :: Apache Software License"]
+dependencies = []
+
+[project.urls]
+Homepage = "https://dinand.com/experiments/delegation-ledger/"
+Source = "https://github.com/dtinholt/delegation-ledger"
+
+[project.scripts]
+delegationledger = "delegationledger.cli:main"
+
+[tool.setuptools]
+packages = ["delegationledger"]

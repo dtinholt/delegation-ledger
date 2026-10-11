@@ -1,0 +1,1003 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>The Delegation Ledger</title>
+<meta name="description" content="A live view of a delegation ledger: what each agent owed, what ran, and where the two books disagree.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Newsreader:opsz,wght@6..72,400;6..72,500;6..72,600&family=Public+Sans:wght@400;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root{
+  --paper:#f3f0e6; --ink:#1c1d19; --graphite:#5d5f55; --rule:#d3cdb9; --ledger:#1d4a6b; --stamp:#a3361d;
+  --display:"Newsreader",Georgia,"Times New Roman",serif;
+  --body:"Public Sans",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --mono:"IBM Plex Mono",ui-monospace,"SF Mono",Menlo,Consolas,monospace;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){ --paper:#171814; --ink:#e7e3d5; --graphite:#a09f93; --rule:#3a3a32; --ledger:#93bcdc; --stamp:#e58d6c; }
+}
+:root[data-theme="dark"]{ --paper:#171814; --ink:#e7e3d5; --graphite:#a09f93; --rule:#3a3a32; --ledger:#93bcdc; --stamp:#e58d6c; }
+*{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%;background:var(--paper)}
+body{margin:0;background:var(--paper);color:var(--ink);font:400 1.0625rem/1.6 var(--body);font-variant-numeric:tabular-nums;overflow-x:hidden}
+.frame{max-width:68rem;margin:0 auto;padding:0 16px}
+a{color:var(--ledger);text-decoration-thickness:1px;text-underline-offset:.2em}
+a:focus-visible,button:focus-visible,summary:focus-visible,input:focus-visible,textarea:focus-visible{outline:2px solid var(--ledger);outline-offset:2px}
+.skip{position:absolute;left:-999px}
+.skip:focus{left:16px;top:8px;background:var(--paper);padding:.25rem .5rem;z-index:2}
+.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+p{margin:0 0 1rem;max-width:66ch}
+h1,h2,h3{font-family:var(--display);font-weight:500;letter-spacing:-.01em;margin:0}
+h1{font-size:2.3rem;line-height:1.08;margin:0 0 .9rem;font-variation-settings:"opsz" 72}
+h2{font-size:1.35rem;line-height:1.25}
+h3{font-size:1.05rem}
+.mono,.src{font-family:var(--mono);font-size:.76rem;letter-spacing:.01em;color:var(--graphite)}
+.src{display:block;margin-top:.2rem}
+.masthead{border-top:4px solid var(--ink);border-bottom:1px solid var(--ink)}
+.mast{padding-top:.9rem;padding-bottom:.75rem}
+.brand{font-family:var(--display);font-size:1.5rem;font-weight:600;line-height:1.1;letter-spacing:-.015em;color:var(--ink);text-decoration:none}
+.register{margin:.15rem 0 0;font-family:var(--mono);font-size:.72rem;text-transform:uppercase;letter-spacing:.08em;color:var(--graphite)}
+main.frame{padding-top:2rem;padding-bottom:3rem}
+.kicker{font-family:var(--mono);font-size:.74rem;text-transform:uppercase;letter-spacing:.09em;color:var(--graphite);margin:0 0 .75rem}
+.lede{font-size:1.15rem;line-height:1.5;max-width:60ch}
+.hero{padding-bottom:1.5rem;border-bottom:3px double var(--ink)}
+.stamp{display:inline-block;padding:.05rem .4rem;border:1.5px solid currentColor;border-radius:2px;font-family:var(--mono);font-size:.68rem;font-weight:500;text-transform:uppercase;letter-spacing:.09em;line-height:1.5;color:var(--graphite);white-space:nowrap}
+.stamp.blue{color:var(--ledger);border-style:double;border-width:3px;padding:0 .35rem}
+.stamp.red{color:var(--stamp)}
+.sim{margin:0}
+.sim .stamp{white-space:normal}
+.hint{display:none}
+.rubric{display:flex;flex-wrap:wrap;align-items:baseline;justify-content:space-between;gap:.25rem 1rem;border-bottom:1px solid var(--ink);padding-bottom:.4rem;margin:2.25rem 0 0}
+.rubric p{margin:0}
+.loadbar{display:grid;grid-template-columns:1fr auto;gap:.75rem 1.5rem;align-items:start;padding:1rem 0;border-bottom:1px solid var(--rule)}
+.drop{border:1.5px dashed var(--graphite);border-radius:2px;padding:.8rem 1rem;font-size:.95rem}
+.drop.over{border-style:solid;border-color:var(--ledger);background:color-mix(in srgb,var(--ledger) 6%,transparent)}
+.drop p{margin:0 0 .4rem}
+.drop input{font-family:var(--body);font-size:.85rem;color:var(--graphite);max-width:100%}
+.loadbar details{grid-column:1 / -1}
+.loadbar summary{cursor:pointer;font-size:.95rem}
+textarea{width:100%;min-height:7rem;margin:.5rem 0;background:var(--paper);color:var(--ink);border:1px solid var(--rule);border-radius:2px;font:400 .78rem/1.4 var(--mono);padding:.5rem}
+button{font:500 .85rem var(--body);color:var(--ink);background:transparent;border:1.5px solid var(--ink);border-radius:2px;padding:.3rem .75rem;cursor:pointer}
+button:hover{background:color-mix(in srgb,var(--ink) 6%,transparent)}
+.status{display:flex;flex-wrap:wrap;gap:.35rem 1.4rem;padding:.7rem 0;border-bottom:1px solid var(--rule);font-family:var(--mono);font-size:.78rem;color:var(--graphite)}
+.status b{font-weight:500;color:var(--ink)}
+.series{font-family:var(--mono);font-size:.76rem;color:var(--graphite);padding:.5rem 0;border-bottom:1px solid var(--rule)}
+.series:empty{display:none}
+.series ol{margin:.2rem 0 0;padding-left:1.4rem}
+.series li{overflow-wrap:anywhere}
+.tally{display:grid;grid-template-columns:repeat(4,1fr);border-bottom:1px solid var(--rule)}
+.tally div{padding:1rem .5rem 1rem 0;border-right:1px solid var(--rule)}
+.tally div:last-child{border-right:0}
+.tally .n{display:block;font-family:var(--mono);font-weight:500;font-size:2rem;line-height:1;letter-spacing:-.02em}
+.tally .l{display:block;margin-top:.35rem;font-size:.88rem;color:var(--graphite)}
+.tally div:not(:first-child){padding-left:.9rem}
+ul.imb{list-style:none;margin:0;padding:0}
+ul.imb li{display:grid;grid-template-columns:7.5rem 1fr;gap:.2rem 1rem;padding:.75rem 0;border-bottom:1px solid var(--rule)}
+ul.imb .what{font-size:.98rem;overflow-wrap:anywhere}
+ul.imb li>*{min-width:0}
+ul.imb .what .mono{display:block}
+.wrap{overflow-x:auto;-webkit-overflow-scrolling:touch}
+table{width:100%;border-collapse:collapse;font-size:.9rem}
+caption{text-align:left;font-family:var(--mono);font-size:.72rem;text-transform:uppercase;letter-spacing:.09em;color:var(--graphite);padding:.6rem 0 .4rem}
+th,td{text-align:left;vertical-align:baseline;padding:.42rem .9rem .42rem 0;border-bottom:1px solid var(--rule);white-space:nowrap}
+th{font-family:var(--mono);font-size:.68rem;text-transform:uppercase;letter-spacing:.08em;color:var(--graphite);font-weight:400;border-bottom:1px solid var(--ink)}
+td.num{font-family:var(--mono);text-align:right}
+th.num{text-align:right}
+td.task{font-family:var(--mono);font-size:.82rem}
+td.wrapcell{white-space:normal;overflow-wrap:anywhere;min-width:8rem}
+tr.first td{border-top:1px solid var(--graphite)}
+tr.bad td{background:color-mix(in srgb,var(--ledger) 7%,transparent)}
+.controls{display:flex;flex-wrap:wrap;gap:.5rem 1.5rem;align-items:center;padding:.7rem 0;font-size:.92rem}
+.controls label{display:inline-flex;gap:.45rem;align-items:center;cursor:pointer}
+input[type=checkbox]{accent-color:var(--ledger)}
+.more{margin:.6rem 0 0}
+.tl{margin:.9rem 0 0;border-bottom:1px solid var(--rule);padding-bottom:.6rem}
+.tl p{margin:0;overflow-wrap:anywhere}
+.tl svg{display:block;width:100%;height:auto;max-width:44rem}
+.tl .owe{fill:none;stroke:var(--ink);stroke-width:1.4}
+.tl .ran{fill:var(--ink)}
+.tl .bad{stroke:var(--ledger);fill:var(--ledger)}
+.tl .owe.bad{fill:none;stroke-width:2.6}
+.tl .ran.bad{stroke:var(--ink);stroke-width:1.5}
+.tl .close{stroke:var(--graphite);stroke-width:2}
+.tl .axis{stroke:var(--rule);stroke-width:1}
+.tl text{font-family:var(--mono);font-size:10px;fill:var(--graphite)}
+.legend{font-family:var(--mono);font-size:.75rem;color:var(--graphite);margin:.6rem 0 0}
+dl.cols{display:grid;grid-template-columns:9rem 1fr;gap:.45rem 1rem;margin:.9rem 0 0}
+dl.cols dt{font-family:var(--mono);font-size:.74rem;text-transform:uppercase;letter-spacing:.06em;color:var(--graphite);padding-top:.15rem}
+dl.cols dd{margin:0;max-width:62ch;font-size:.95rem}
+.blind{margin-top:1rem;border-left:3px solid var(--ink);padding:.2rem 0 .2rem 1rem}
+.blind p{max-width:62ch}
+.figs{width:100%;border-collapse:collapse;margin-top:.5rem}
+.figs td{border-bottom:1px solid var(--rule);padding:.8rem 0;vertical-align:baseline;white-space:normal}
+.figs .fn{font-family:var(--mono);font-weight:500;font-size:1.55rem;line-height:1;letter-spacing:-.02em;text-align:right;padding-right:1.1rem;white-space:nowrap;width:1%}
+.note{font-size:.92rem;color:var(--graphite)}
+footer{border-top:3px double var(--ink);padding:1.25rem 0 2.5rem}
+footer p{font-size:.88rem;color:var(--graphite)}
+@media (max-width:640px){
+  h1{font-size:1.9rem}
+  .loadbar{grid-template-columns:1fr}
+  .tally{grid-template-columns:repeat(2,1fr)}
+  .tally div:nth-child(2){border-right:0}
+  .tally div:nth-child(3){padding-left:0}
+  .tally div:nth-child(-n+2){border-bottom:1px solid var(--rule)}
+  ul.imb li{grid-template-columns:minmax(0,1fr)}
+  th,td{padding-right:.6rem}
+  .figs .fn{font-size:1.25rem}
+  .hint{display:block;margin:0 0 .3rem}
+  dl.cols{grid-template-columns:1fr}
+  dl.cols dd{margin-bottom:.4rem}
+  /* at phone width each injected fault reads as a block: task beside condition, detail and verdict below */
+  #truth thead{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
+  #truth tr{display:grid;grid-template-columns:4.6rem minmax(0,1fr);gap:.1rem .6rem;padding:.55rem 0;border-bottom:1px solid var(--rule)}
+  #truth td{display:block;border:0;padding:0;white-space:normal;overflow-wrap:anywhere}
+  #truth td:nth-child(3),#truth td:nth-child(4){grid-column:2}
+  #truth td:nth-child(3):empty{display:none}
+}
+@media print{
+  .loadbar,.controls,.more,.hint,.skip{display:none}
+  .wrap{overflow:visible}
+  th,td{white-space:normal;padding-right:.5rem}
+  table:not(.figs){font-size:.72rem}
+  td.task,td.mono,td.num{white-space:nowrap}
+  .rubric{break-after:avoid}
+  .tl,ul.imb li,tr{break-inside:avoid}
+  dl.cols dt{break-after:avoid}
+  dl.cols dd{break-before:avoid;break-inside:avoid}
+  h2{break-after:avoid}
+  a{color:var(--ink)}
+}
+</style>
+</head>
+<body>
+<a class="skip" href="#main">Skip to the balance</a>
+<header class="masthead"><div class="frame mast">
+  <a class="brand" href="https://dinand.com/research/">Dinand Tinholt · Research</a>
+  <p class="register">Builds · open library and live view</p>
+</div></header>
+
+<main class="frame" id="main">
+  <section class="hero">
+    <p class="kicker">Build · from the Trial Balance campaign</p>
+    <h1>The Delegation Ledger</h1>
+    <p class="lede">Before an agent starts, the dispatcher notes each step it owes. This page sets that list against the steps the tool runner saw execute and shows you only where they part.</p>
+    <p class="sim"><span class="stamp">Simulation from published coefficients, not a deployed system</span></p>
+    <p class="src">sample: demo/sample-ledger.jsonl, written by demo/make_sample.py; amounts and times are made up for the demo</p>
+  </section>
+
+  <div class="loadbar">
+    <div class="drop" id="drop">
+      <p>Drop a ledger file here, or several segments of a rotated one.</p>
+      <label for="file" class="sr">Open ledger files</label>
+      <input type="file" id="file" accept=".jsonl,.json,.txt,text/plain" multiple>
+    </div>
+    <button type="button" id="reset">Back to the sample</button>
+    <details id="pastebox">
+      <summary>Paste a ledger instead</summary>
+      <label for="paste" class="sr">Ledger lines, one JSON object per line</label>
+      <textarea id="paste" spellcheck="false" placeholder='{"agent":"buyer","amount":null,"book":"owe",...}'></textarea>
+      <button type="button" id="readpaste">Read the pasted lines</button>
+    </details>
+  </div>
+
+  <div class="status" id="status" role="status" aria-live="polite"><span>loading ledger</span></div>
+  <div class="series" id="series"></div>
+
+  <div class="tally" id="tally"></div>
+
+  <div class="rubric"><h2>Where the books disagree</h2><p class="mono" id="asof"></p></div>
+  <ul class="imb" id="imbalances"></ul>
+
+  <div class="rubric"><h2>Trial balance</h2><p class="mono">one line per task, agent and step</p></div>
+  <div class="controls">
+    <label><input type="checkbox" id="onlybad"> Show only lines that do not balance</label>
+  </div>
+  <p class="mono hint">the tables scroll sideways</p>
+  <div class="wrap"><table id="tb">
+    <caption class="sr">Trial balance</caption>
+    <thead><tr><th scope="col">task</th><th scope="col">agent</th><th scope="col">step</th><th scope="col" class="num">owed</th><th scope="col" class="num">ran</th><th scope="col" class="num">owed amount</th><th scope="col" class="num">ran amount</th><th scope="col">status</th><th scope="col">reason</th><th scope="col">due</th></tr></thead>
+    <tbody></tbody>
+  </table></div>
+  <p class="more"><button type="button" id="tbmore" hidden aria-controls="tb"></button></p>
+
+  <div class="rubric"><h2>By agent</h2><p class="mono">each agent is its own account</p></div>
+  <div class="wrap"><table id="agents">
+    <caption class="sr">Lines per agent by status</caption>
+    <thead><tr><th scope="col">agent</th><th scope="col" class="num">tasks</th><th scope="col" class="num">lines</th><th scope="col" class="num">owed</th><th scope="col" class="num">ran</th><th scope="col" class="num">ok</th><th scope="col" class="num">open</th><th scope="col" class="num">skipped</th><th scope="col" class="num">amount</th><th scope="col" class="num">unowed</th></tr></thead>
+    <tbody></tbody>
+  </table></div>
+
+  <div class="rubric"><h2>By task</h2><p class="mono">tasks with a line out of balance first</p></div>
+  <div class="wrap"><table id="tasks">
+    <caption class="sr">Lines per task by status</caption>
+    <thead><tr><th scope="col">task</th><th scope="col">agents</th><th scope="col" class="num">lines</th><th scope="col" class="num">ok</th><th scope="col" class="num">open</th><th scope="col" class="num">skipped</th><th scope="col" class="num">amount</th><th scope="col" class="num">unowed</th><th scope="col">closed</th><th scope="col">first line</th><th scope="col">last line</th></tr></thead>
+    <tbody></tbody>
+  </table></div>
+  <p class="more"><button type="button" id="taskmore" hidden aria-controls="tasks"></button></p>
+
+  <div class="rubric"><h2>Timeline per task</h2><p class="mono">owe and ran lines in time order</p></div>
+  <p class="legend">square above the rule: owed · circle below: ran · bar across: task closed · a step out of balance: heavy diamond above, large ringed circle below · each mark has a title with its line</p>
+  <div id="timelines"></div>
+  <p class="more"><button type="button" id="tlmore" hidden aria-controls="timelines"></button></p>
+
+  <div class="rubric"><h2>What each column means</h2><p class="mono">read this before the numbers</p></div>
+  <dl class="cols" id="cols"></dl>
+
+  <section id="truthsec">
+    <div class="rubric"><h2>What the generator injected</h2><p class="mono">sample-truth.json</p></div>
+    <p class="note" style="margin-top:.8rem">The sample carries one requisition per fault condition from the campaign, plus one in progress and one the commissioner closed early. Each verdict says whether the balance above shows that fault.</p>
+    <div class="wrap"><table id="truth">
+      <caption class="sr">Injected faults and whether the balance shows them</caption>
+      <thead><tr><th scope="col">task</th><th scope="col">condition</th><th scope="col">detail</th><th scope="col">in the balance</th></tr></thead>
+      <tbody></tbody>
+    </table></div>
+  </section>
+
+  <div class="rubric"><h2>What this cannot see</h2><p><span class="stamp red">Blind spot by design</span></p></div>
+  <div class="blind">
+    <p>A wrong amount carried on both sides balances. If the error got in before the work was assigned, the obligation and the run agree on the wrong value, and the line reads clean. <span id="c2line">Requisition <span class="mono" id="c2task">R-0107</span> in the sample is one of these: its quote was <span class="mono" id="c2quote">6,418</span> and both books carry <span class="mono" id="c2posted">4,618</span>.</span></p>
+    <p>In the campaign the balance check found 0 of 1,044 such faults. A full read of the log found them almost every time, because the vendor's quote still showed the true amount.</p>
+    <span class="src">source: Dinand Tinholt, Research, "A Trial Balance for Agent Omissions", campaign page, found section, published 2026-10-01</span>
+  </div>
+
+  <div class="rubric"><h2>What the campaign measured</h2><p class="mono">18,360 audits, one auditor model</p></div>
+  <table class="figs">
+    <tr><td class="fn">0.80</td><td>omission detection reached by reading the imbalance first, at 745 prompt tokens and eight requisitions<span class="src">claims.yaml tb-c80; 90% interval 740 to 749 tokens</span></td></tr>
+    <tr><td class="fn">0.58</td><td>best omission detection by plain log review at any budget or trace length; it never reached 0.80<span class="src">claims.yaml tb-lr-best</span></td></tr>
+    <tr><td class="fn">21&times;</td><td>correct omission findings per thousand tokens read, imbalance-first against log review at its best budget<span class="src">claims.yaml tb-ratio; 1.34 against 0.063, eight requisitions</span></td></tr>
+    <tr><td class="fn">0 / 1,044</td><td>wrong amounts carried on both sides that the balance check found<span class="src">campaign page, trial-balance, found section</span></td></tr>
+  </table>
+  <p class="note" style="margin-top:1rem">These figures come from the campaign's audits of a seven-step procurement workflow. The library on this page keeps the same two books and computes the same balance, and nobody has yet measured it on a live system.</p>
+</main>
+
+<footer><div class="frame">
+  <p>Library: <span class="mono">delegationledger/</span>, Python standard library only. Licence Apache-2.0. Run <span class="mono">python3 demo/make_sample.py</span> to regenerate the sample, then reload. Served over http the page reads <span class="mono">sample-ledger.jsonl</span> directly, and <span class="mono">?ledger=path</span> opens another file on the same site; opened from disk it uses the inlined copy in <span class="mono">sample-ledger.js</span>. Files you drop or paste stay in this browser tab.</p>
+  <p>Campaign: <a href="https://dinand.com/research/campaigns/trial-balance/">A Trial Balance for Agent Omissions</a>, published 2026-10-01.</p>
+  <p><a href="https://dinand.com/research/">dinand.com/research</a></p>
+</div></footer>
+
+<script src="sample-ledger.js"></script>
+<script>
+"use strict";
+const $ = (id) => document.getElementById(id);
+const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const GENESIS = "0".repeat(64);
+const FORMAT = "delegationledger/1";
+const ROLE = { owe: "commissioner", close: "commissioner", ran: "harness", seal: "commissioner", carry: "commissioner" };
+const COMMON = ["fmt", "book", "role", "by", "ts", "seq", "prev", "hash"];
+const KEYS = {
+  owe: COMMON.concat(["task_id", "agent", "step", "amount", "due"]).sort(),
+  ran: COMMON.concat(["task_id", "agent", "step", "amount", "due"]).sort(),
+  close: COMMON.concat(["task_id", "agent", "step", "amount", "due"]).sort(),
+  seal: COMMON.concat(["segment", "lines"]).sort(),
+  carry: COMMON.concat(["from", "head"]).sort(),
+};
+const BAD = new Set(["skipped", "amount", "unowed"]);
+const STATUSES = ["ok", "open", "skipped", "amount", "unowed"];
+const AMOUNT = /^-?(0|[1-9][0-9]{0,29})(\.[0-9]{1,18})?$/;
+const HEX64 = /^[0-9a-f]{64}$/;
+const CAP = { tb: 400, tasks: 300, tl: 40 };
+const COLUMN_NOTES = [
+  ["task", "The task id the dispatcher assigned. One task can involve several agents."],
+  ["agent", "The agent that owed the step or ran it. Each agent is its own account."],
+  ["step", "The step or tool name. A task, agent and step together make one line of the balance."],
+  ["owed", "How many times the commissioner wrote that this step is owed."],
+  ["ran", "How many times the harness recorded the step running."],
+  ["owed amount", "The amount on each obligation, where the step carries one."],
+  ["ran amount", "The amount on each run. It is compared with the owed amount as a decimal, so 120.5 and 120.50 agree."],
+  ["status", "ok: both books agree. open: owed, not run, not late yet. skipped: owed, not run, and the task was closed, a later owed step ran, or the due time passed. amount: ran at a different amount. unowed: ran more often than it was owed."],
+  ["reason", "Why a skipped step counts as skipped: closed, moved_on (a later owed step ran) or overdue."],
+  ["due", "The earliest due time on the obligation, in UTC. A step with no due time and no close stays open."],
+  ["tasks, lines", "In the agent and task views: how many tasks an agent touched, and how many balance lines fall under it."],
+  ["agents", "In the task view: every agent with a line on that task."],
+  ["closed", "Whether the commissioner wrote a close line for the task."],
+  ["first line, last line", "The timestamps of the task's first and last lines in the file."],
+];
+
+// -- the exact bytes Python hashes: json.dumps(sort_keys=True, separators=(",",":"), ensure_ascii=False)
+function canonical(v) {
+  if (v === null || typeof v !== "object") return JSON.stringify(v);
+  if (Array.isArray(v)) return "[" + v.map(canonical).join(",") + "]";
+  return "{" + Object.keys(v).sort().map((k) => JSON.stringify(k) + ":" + canonical(v[k])).join(",") + "}";
+}
+const HAS_SUBTLE = !!(window.crypto && crypto.subtle);
+async function sha256(text) {
+  const buf = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(text));
+  return Array.from(new Uint8Array(buf), (b) => b.toString(16).padStart(2, "0")).join("");
+}
+
+class LedgerFault extends Error { constructor(file, line, why) { super((file ? file + " " : "") + "line " + line + ": " + why); this.file = file; this.line = line; this.why = why; } }
+
+// Split on newline only (a name may hold U+2028); tolerate a BOM and CRLF; refuse a partial last line.
+function parse(raw, file) {
+  if (raw.charCodeAt(0) === 0xfeff) raw = raw.slice(1);
+  if (raw && !raw.endsWith("\n")) throw new LedgerFault(file, raw.split("\n").length, "partial last line (no newline); inspect it, then truncate the partial tail by hand");
+  const lines = raw ? raw.split("\n").slice(0, -1) : [];
+  return lines.map((l, i) => {
+    if (l.endsWith("\r")) l = l.slice(0, -1);
+    if (!l.trim()) throw new LedgerFault(file, i + 1, "blank line");
+    let v;
+    try { v = JSON.parse(l); } catch (e) { throw new LedgerFault(file, i + 1, "not JSON"); }
+    if (v === null || typeof v !== "object" || Array.isArray(v)) throw new LedgerFault(file, i + 1, "not a JSON object");
+    return v;
+  });
+}
+
+const wellFormed = (s) => (typeof s.isWellFormed === "function") ? s.isWellFormed() : !/[\uD800-\uDBFF](?![\uDC00-\uDFFF])|(?:^|[^\uD800-\uDBFF])[\uDC00-\uDFFF]/.test(s);
+function nameProblem(v) {
+  if (typeof v !== "string" || !/[^ \t\n\r\v\f]/.test(v)) return "must be a non-empty string";
+  if ([...v].length > 512) return "is longer than 512 characters";
+  if (!wellFormed(v)) return "is not valid Unicode (lone surrogate)";
+  return null;
+}
+const SEGMENT = /^[^\/\\\x00-\x1f]+\.[0-9]{6}(\.[^.\/\\\x00-\x1f]+)?$/;
+const segmentOk = (n) => typeof n === "string" && [...n].length <= 512 && SEGMENT.test(n) && !n.startsWith(".") && !n.includes("..");
+function parseTime(s) {
+  if (typeof s !== "string") return NaN;
+  let t = s.trim().replace(" ", "T");
+  if (!/([zZ]|[+-]\d\d:?\d\d)$/.test(t)) t += "Z";
+  return Date.parse(t);
+}
+// Port of _structure_problem in delegationledger/ledger.py
+function structureProblem(e) {
+  const book = e.book;
+  if (!Object.prototype.hasOwnProperty.call(KEYS, book)) return "unknown book";
+  if (Object.keys(e).sort().join(",") !== KEYS[book].join(",")) return "fields do not match a " + book + " line";
+  if (e.fmt !== FORMAT) return "unknown format";
+  if (e.role !== ROLE[book]) return "a " + book + " line must carry role " + ROLE[book];
+  if (!Number.isInteger(e.seq)) return "seq is not an integer";
+  for (const k of ["prev", "hash"]) if (typeof e[k] !== "string" || !HEX64.test(e[k])) return k + " is not a SHA-256 hex digest";
+  for (const k of ["by", "ts"]) { const p = nameProblem(e[k]); if (p) return k + " " + p; }
+  if (book === "owe" || book === "ran" || book === "close") {
+    for (const k of (book === "close" ? ["task_id"] : ["task_id", "agent", "step"])) { const p = nameProblem(e[k]); if (p) return k + " " + p; }
+    if (book === "close" && (e.agent !== null || e.step !== null || e.amount !== null)) return "a close line carries only a task_id";
+    if (e.amount !== null && !(typeof e.amount === "string" && AMOUNT.test(e.amount))) return "amount is not a plain decimal string";
+    if (e.due !== null) {
+      if (book !== "owe") return "a " + book + " line carries no due time";
+      if (Number.isNaN(parseTime(e.due))) return "due is not an ISO 8601 time";
+    }
+  } else if (book === "seal") {
+    if (!segmentOk(e.segment)) return "segment is not a segment file name";
+    if (!Number.isInteger(e.lines) || e.lines < 1) return "lines is not a positive integer";
+  } else {
+    if (!segmentOk(e.from)) return "from is not a segment file name";
+    if (e.head !== e.prev) return "a carry line's head must equal its prev";
+  }
+  return null;
+}
+
+// Verify one file's chain, starting at prev/seq, line by line in Python's order (structure, prev,
+// seq, seal and carry rules, hash), so the first failing line is the one named. The hashes are
+// computed first in parallel batches so a large file does not freeze the tab; progress(i, n) runs
+// between batches.
+async function verifyFile(entries, file, prev, seq, carryFrom, progress) {
+  let digests = null;
+  if (HAS_SUBTLE) {
+    digests = new Array(entries.length);
+    const B = 1000;
+    for (let s = 0; s < entries.length; s += B) {
+      const chunk = entries.slice(s, s + B);
+      const got = await Promise.all(chunk.map((e) => {
+        if (e === null || typeof e !== "object" || structureProblem(e)) return null;   // reported in order below
+        const b = Object.assign({}, e); delete b.hash; return sha256(canonical(b));
+      }));
+      for (let j = 0; j < got.length; j++) digests[s + j] = got[j];
+      if (progress && entries.length > B) await progress(Math.min(s + B, entries.length), entries.length);
+    }
+  }
+  for (let i = 0; i < entries.length; i++) {
+    const e = entries[i];
+    if (!("hash" in e)) throw new LedgerFault(file, i + 1, "no hash field");
+    const p = structureProblem(e);
+    if (p) throw new LedgerFault(file, i + 1, p);
+    if (e.prev !== prev) throw new LedgerFault(file, i + 1, "prev does not match the hash of the line before");
+    if (e.seq !== seq + i) throw new LedgerFault(file, i + 1, "seq is " + e.seq + ", expected " + (seq + i));
+    const before = i ? entries[i - 1].book : null;
+    if (e.book === "carry") {
+      if (i === 0) { if (carryFrom != null && e.from !== carryFrom) throw new LedgerFault(file, 1, "carries from " + e.from + ", expected " + carryFrom); }
+      else if (before !== "seal") throw new LedgerFault(file, i + 1, "a carry line must open a file or follow a seal");
+    } else if (i === 0 && carryFrom != null) throw new LedgerFault(file, 1, "the file after " + carryFrom + " must open with a carry line");
+    if (before === "seal" && e.book !== "carry") throw new LedgerFault(file, i + 1, "lines after a seal");
+    if (digests && digests[i] !== e.hash) throw new LedgerFault(file, i + 1, "hash does not match the line's contents");
+    prev = e.hash;
+  }
+  return { hashed: !!digests };
+}
+
+// files: [{name, entries}] in any order. Orders them by first seq, then checks every link.
+async function verifySeries(files, progress) {
+  const fs = files.filter((f) => f.entries.length).sort((a, b) => a.entries[0].seq - b.entries[0].seq);
+  const out = { ok: null, files: fs.map((f) => ({ name: f.name, lines: f.entries.length })), head: GENESIS, anchor: null, seals: [] };
+  if (!fs.length) { out.ok = true; out.empty = true; return out; }
+  let prev = GENESIS, seq = 1, carryFrom = null, total = 0, all = 0;
+  fs.forEach((f) => { all += f.entries.length; });
+  const first = fs[0].entries[0];
+  if (first.book === "carry" && typeof first.prev === "string") { prev = first.prev; seq = first.seq; out.anchor = { head: first.prev, from: first.from }; }
+  for (let k = 0; k < fs.length; k++) {
+    const f = fs[k], es = f.entries;
+    const r = await verifyFile(es, f.name, prev, seq, k ? carryFrom : null, progress && ((i) => progress(total + i, all)));
+    if (!r.hashed) out.unhashed = true;
+    const last = es[es.length - 1];
+    if (k < fs.length - 1) {
+      if (last.book !== "seal") throw new LedgerFault(f.name, es.length, "a segment followed by another must end with a seal line");
+      carryFrom = last.segment;
+    }
+    if (last.book === "seal") out.seals.push({ file: f.name, segment: last.segment, head: last.hash });
+    prev = last.hash; seq += es.length; total += es.length;
+  }
+  out.head = prev;
+  out.ok = out.unhashed ? null : true;
+  return out;
+}
+
+// Decimal-string equality without floats.
+function normAmt(a) {
+  let s = String(a).trim(), neg = s.startsWith("-");
+  if (neg || s.startsWith("+")) s = s.slice(1);
+  let [i, f = ""] = s.split(".");
+  i = i.replace(/^0+/, "") || "0"; f = f.replace(/0+$/, "");
+  const out = f ? i + "." + f : i;
+  return (neg && out !== "0") ? "-" + out : out;
+}
+const sameAmt = (a, b) => (a == null || b == null) ? (a == null && b == null) : normAmt(a) === normAmt(b);
+
+// Port of Ledger.rows() in delegationledger/ledger.py
+function rows(entries, asOf) {
+  // keys are JSON arrays, so no character inside a name can collide with a separator
+  const owed = new Map(), ran = new Map(), order = new Map(), first = new Map(), closedAt = new Map();
+  const K3 = (t, a, s) => JSON.stringify([t, a, s]), K2 = (t, a) => JSON.stringify([t, a]);
+  for (const e of entries) {
+    if (e.book === "close") { closedAt.set(e.task_id, e.seq); continue; }
+    if (e.book !== "owe" && e.book !== "ran") continue;
+    const k = K3(e.task_id, e.agent, e.step);
+    if (!first.has(k)) first.set(k, e.seq);
+    if (e.book === "owe") {
+      const ta = K2(e.task_id, e.agent);
+      if (!owed.has(k)) { if (!order.has(ta)) order.set(ta, []); order.get(ta).push(e.step); owed.set(k, []); }
+      owed.get(k).push(e);
+    } else {
+      if (!ran.has(k)) ran.set(k, []);
+      ran.get(k).push(e);
+    }
+  }
+  const position = new Map();
+  for (const [ta, steps] of order) { const m = new Map(); steps.forEach((s, i) => m.set(s, i)); position.set(ta, m); }
+  const keys = [...new Set([...owed.keys(), ...ran.keys()])].map((k) => [k, JSON.parse(k)]);
+  keys.sort(([a, A], [b, B]) => cmpCP(A[0], B[0]) || cmpCP(A[1], B[1]) || (first.get(a) - first.get(b)));
+  const asOfMs = Date.parse(asOf);
+  return keys.map(([k, [task, agent, step]]) => {
+    const o = owed.get(k) || [], r = ran.get(k) || [];
+    const oa = o.map((x) => x.amount), ra = r.map((x) => x.amount);
+    let due = null, dueMs = Infinity;
+    for (const x of o) if (x.due) { const t = parseTime(x.due); if (t < dueMs) { dueMs = t; due = x.due; } }
+    let status, reason = null;
+    if (r.length > o.length) status = "unowed";
+    else if (r.length < o.length) {
+      const ta = K2(task, agent), seq = order.get(ta) || [], idx = position.get(ta)?.get(step);
+      const later = idx === undefined ? [] : seq.slice(idx + 1);
+      const movedOn = later.some((s) => (ran.get(K3(task, agent, s)) || []).length);
+      const overdue = due !== null && dueMs < asOfMs;
+      let maxOwe = 0; for (const x of o) if (x.seq > maxOwe) maxOwe = x.seq;
+      const closed = (closedAt.get(task) || 0) > maxOwe;
+      reason = closed ? "closed" : movedOn ? "moved_on" : overdue ? "overdue" : null;
+      status = reason ? "skipped" : "open";
+    } else if (oa.some((a, i) => a != null && !sameAmt(a, ra[i]))) status = "amount";
+    else status = "ok";
+    return { task, agent, step, owed: o.length, ran: r.length, oa, ra, due, status, reason };
+  });
+}
+// Compare by Unicode code point, as Python's sort does (differs from UTF-16 order above U+FFFF).
+function cmpCP(a, b) {
+  if (a === b) return 0;
+  const A = [...a], B = [...b], n = Math.min(A.length, B.length);
+  for (let i = 0; i < n; i++) { const x = A[i].codePointAt(0), y = B[i].codePointAt(0); if (x !== y) return x - y; }
+  return A.length - B.length;
+}
+
+function byAgent(R) {
+  const m = new Map();
+  for (const r of R) {
+    if (!m.has(r.agent)) m.set(r.agent, { agent: r.agent, tasks: new Set(), lines: 0, owed: 0, ran: 0, ok: 0, open: 0, skipped: 0, amount: 0, unowed: 0 });
+    const a = m.get(r.agent); a.tasks.add(r.task); a.lines++; a.owed += r.owed; a.ran += r.ran; a[r.status]++;
+  }
+  return [...m.values()].sort((x, y) => cmpCP(x.agent, y.agent)).map((a) => Object.assign(a, { tasks: a.tasks.size }));
+}
+function byTask(R, entries) {
+  const closed = new Set(), first = new Map(), last = new Map();
+  for (const e of entries) {
+    if (e.book !== "owe" && e.book !== "ran" && e.book !== "close") continue;
+    if (e.book === "close") closed.add(e.task_id);
+    if (!first.has(e.task_id)) first.set(e.task_id, e.ts);
+    last.set(e.task_id, e.ts);
+  }
+  const m = new Map();
+  for (const r of R) {
+    if (!m.has(r.task)) m.set(r.task, { task: r.task, agents: new Set(), lines: 0, ok: 0, open: 0, skipped: 0, amount: 0, unowed: 0 });
+    const t = m.get(r.task); t.agents.add(r.agent); t.lines++; t[r.status]++;
+  }
+  return [...m.values()].map((t) => Object.assign(t, { agents: [...t.agents].sort(cmpCP), closed: closed.has(t.task), first: first.get(t.task) || "", last: last.get(t.task) || "" }));
+}
+function eventsByTask(entries) {
+  const m = new Map();
+  for (const e of entries) {
+    if (e.book !== "owe" && e.book !== "ran" && e.book !== "close") continue;
+    if (!m.has(e.task_id)) m.set(e.task_id, []);
+    m.get(e.task_id).push(e);
+  }
+  return m;
+}
+// Same drawing as timeline_svg in delegationledger/report.py
+function timelineSVG(task, events, badSteps) {
+  const W = 640, x0 = 8, x1 = 632;
+  const times = events.map((e) => parseTime(e.ts));
+  let lo = Infinity, hi = -Infinity, allParse = true;   // a loop: spreading 140,000 values into Math.min overflows the stack
+  for (const t of times) { if (Number.isNaN(t)) { allParse = false; break; } if (t < lo) lo = t; if (t > hi) hi = t; }
+  const timed = allParse && hi > lo, n = events.length;
+  const xs = events.map((e, i) => timed ? x0 + (times[i] - lo) / (hi - lo) * (x1 - x0) : x0 + (n > 1 ? i / (n - 1) : 0.5) * (x1 - x0));
+  const marks = [`<line class="axis" x1="${x0}" y1="24" x2="${x1}" y2="24"/>`];
+  let owes = 0, rans = 0;
+  events.forEach((e, i) => {
+    const x = xs[i].toFixed(1), bad = badSteps.has(JSON.stringify([e.agent, e.step])) ? " bad" : "";
+    const label = esc([e.book, e.agent, e.step, e.amount].filter((v) => v != null).join(" ") + " at " + e.ts + " (line " + e.seq + ")");
+    const X = xs[i];
+    if (e.book === "owe" && bad) { owes++; marks.push(`<polygon class="owe bad" points="${X.toFixed(1)},5.5 ${(X + 5.5).toFixed(1)},11 ${X.toFixed(1)},16.5 ${(X - 5.5).toFixed(1)},11"><title>${label}</title></polygon>`); }
+    else if (e.book === "owe") { owes++; marks.push(`<rect class="owe" x="${(X - 3.5).toFixed(1)}" y="8" width="7" height="7"><title>${label}</title></rect>`); }
+    else if (e.book === "ran") { rans++; marks.push(`<circle class="ran${bad}" cx="${x}" cy="33.5" r="${bad ? 5.2 : 3.8}"><title>${label}</title></circle>`); }
+    else marks.push(`<line class="close" x1="${x}" y1="4" x2="${x}" y2="44"><title>${label}</title></line>`);
+  });
+  if (n) marks.push(`<text x="${x0}" y="54">${esc(events[0].ts)}</text>`);
+  if (n > 1) marks.push(`<text x="${x1}" y="54" text-anchor="end">${esc(events[n - 1].ts)}</text>`);
+  const aria = esc(`${task}: ${owes} owe lines, ${rans} ran lines, ${badSteps.size} steps out of balance, ${timed ? "spaced by time" : "spaced in file order"}`);
+  return `<svg viewBox="0 0 ${W} 56" role="img" aria-label="${aria}" xmlns="http://www.w3.org/2000/svg">${marks.join("")}</svg>`;
+}
+
+const fmt = (list) => list.filter((a) => a != null).map((a) => {
+  const [i, f] = String(a).split(".");
+  return i.replace(/\B(?=(\d{3})+(?!\d))/g, ",") + (f ? "." + f : "");
+}).join(", ");
+const keyOf = (r) => r.task + "/" + r.agent + "/" + r.step;
+const stampHTML = (s) => `<span class="stamp${BAD.has(s) ? " blue" : ""}">${esc(s)}</span>`;
+const WHY = { closed: "the commissioner closed the task", moved_on: "a later step on the task ran", overdue: "past its due time" };
+
+// -- views: each returns an HTML string; every value from the file goes through esc()
+function viewImbalances(R) {
+  const items = [];
+  const c = (s) => R.filter((r) => r.status === s);
+  for (const r of c("skipped")) items.push(["skipped", `<b>${esc(r.step)}</b> owed by ${esc(r.agent)} on ${esc(r.task)} never ran`, `owed ${r.owed}, ran ${r.ran}; ${WHY[r.reason]}` + (r.due ? `; due ${r.due}` : "")]);
+  for (const r of c("amount")) items.push(["amount", `<b>${esc(r.step)}</b> by ${esc(r.agent)} on ${esc(r.task)} ran at a different amount`, `owed ${fmt(r.oa) || "none"}, ran ${fmt(r.ra) || "none"}`]);
+  for (const r of c("unowed")) items.push(["unowed", `<b>${esc(r.step)}</b> ran for ${esc(r.agent)} on ${esc(r.task)} with nothing owed`, `owed ${r.owed}, ran ${r.ran}`]);
+  for (const r of c("open")) items.push(["open", `${esc(r.step)} owed by ${esc(r.agent)} on ${esc(r.task)}, not run yet`, r.due ? `due ${r.due}` : "no due time and no close; it stays open until one of them arrives"]);
+  const shown = items.slice(0, 200);
+  let html = shown.map(([s, what, m]) => `<li><span>${stampHTML(s)}</span><span class="what">${what}<span class="mono">${esc(m)}</span></span></li>`).join("");
+  if (items.length > shown.length) html += `<li><span></span><span class="what mono">${items.length - shown.length} more; the trial balance below lists every line</span></li>`;
+  return items.length ? html : '<li><span><span class="stamp">balanced</span></span><span class="what">The two books agree on every line. A wrong amount carried on both sides would leave this list empty too; the blind-spot note below covers it.</span></li>';
+}
+function viewTrialBalance(R, onlyBad, all) {
+  const list = R.filter((r) => !onlyBad || r.status !== "ok");
+  const shown = all ? list : list.slice(0, CAP.tb);
+  let lastTask = null;
+  const html = shown.map((r) => {
+    const first = r.task !== lastTask; lastTask = r.task;
+    const cls = [first ? "first" : "", BAD.has(r.status) ? "bad" : ""].join(" ").trim();
+    return `<tr${cls ? ` class="${cls}"` : ""}><td class="task">${first ? esc(r.task) : ""}</td><td>${esc(r.agent)}</td><td>${esc(r.step)}</td>`
+      + `<td class="num">${r.owed}</td><td class="num">${r.ran}</td><td class="num">${esc(fmt(r.oa))}</td><td class="num">${esc(fmt(r.ra))}</td>`
+      + `<td>${stampHTML(r.status)}</td><td>${esc(r.reason || "")}</td><td class="mono">${esc(r.due || "")}</td></tr>`;
+  }).join("");
+  return { html, total: list.length, shown: shown.length };
+}
+function viewAgents(R) {
+  return byAgent(R).map((a) => `<tr><td>${esc(a.agent)}</td>` + ["tasks", "lines", "owed", "ran"].concat(STATUSES).map((k) => `<td class="num">${a[k]}</td>`).join("") + "</tr>").join("");
+}
+function viewTasks(R, entries, all) {
+  const list = byTask(R, entries).sort((x, y) => ((y.skipped + y.amount + y.unowed) > 0) - ((x.skipped + x.amount + x.unowed) > 0));
+  const shown = all ? list : list.slice(0, CAP.tasks);
+  const html = shown.map((t) => `<tr><td class="task">${esc(t.task)}</td><td class="wrapcell">${esc(t.agents.join(", "))}</td>`
+    + ["lines"].concat(STATUSES).map((k) => `<td class="num">${t[k]}</td>`).join("")
+    + `<td>${t.closed ? "yes" : "no"}</td><td class="mono">${esc(t.first)}</td><td class="mono">${esc(t.last)}</td></tr>`).join("");
+  return { html, total: list.length, shown: shown.length };
+}
+function viewTimelines(R, entries, limit) {
+  const bad = new Map();
+  for (const r of R) if (BAD.has(r.status)) { if (!bad.has(r.task)) bad.set(r.task, new Set()); bad.get(r.task).add(JSON.stringify([r.agent, r.step])); }
+  const ev = eventsByTask(entries);
+  const tasks = [...ev.keys()].sort((a, b) => (bad.has(b) ? 1 : 0) - (bad.has(a) ? 1 : 0));
+  const shown = tasks.slice(0, limit);
+  const html = shown.map((t) => {
+    const b = bad.get(t) || new Set();
+    return `<div class="tl"><p class="mono">${esc(t)} · ${ev.get(t).length} entries${b.size ? " · " + b.size + " out of balance" : ""}</p>${timelineSVG(t, ev.get(t), b)}</div>`;
+  }).join("");
+  return { html, total: tasks.length, shown: shown.length, events: shown.reduce((n, t) => n + ev.get(t).length, 0) };
+}
+function viewSeries(chain) {
+  if (!chain || !chain.files || chain.files.length < 2 && !chain.anchor && !chain.seals.length) return "";
+  let html = `Rotated series: ${chain.files.length} file(s), read oldest first.<ol>`
+    + chain.files.map((f) => `<li>${esc(f.name)}: ${f.lines} lines</li>`).join("") + "</ol>";
+  if (chain.seals.length) html += chain.seals.map((s) => `sealed ${esc(s.file)} at head ${esc(s.head.slice(0, 16))}; the next file carries it`).join("<br>");
+  if (chain.anchor) html += `<br>The first file loaded opens with a carry from ${esc(chain.anchor.from)} at head ${esc(chain.anchor.head.slice(0, 16))}; that earlier file is not loaded, so the chain is checked from this head on.`;
+  return html;
+}
+
+let STATE = { entries: [], truth: null, chain: null, name: "", error: null };
+const VIEW = { tbAll: false, taskAll: false, tlLimit: CAP.tl };
+let TOKEN = 0;  // a newer load cancels the render of an older one
+let RESTORE = null;  // how to bring back what the page shows now; the self-check uses it
+
+function render() {
+  const t0 = performance.now();
+  const asOf = new Date().toISOString().replace(/\.\d+Z$/, "Z");
+  const R = rows(STATE.entries, asOf);
+  const chain = STATE.chain;
+  let chainStamp;
+  if (STATE.error) chainStamp = `<span class="stamp">chain broken at ${esc(STATE.error.file || "")} line ${esc(STATE.error.line)}</span>`;
+  else if (chain && chain.ok === true) chainStamp = '<span class="stamp blue">chain verified</span>';
+  else chainStamp = '<span class="stamp">chain not checked: no WebCrypto here</span>';
+  const tasks = new Set(STATE.entries.filter((e) => e.task_id != null).map((e) => e.task_id)).size;
+  const closes = STATE.entries.filter((e) => e.book === "close").length;
+  let st = `${chainStamp}<span><b>${esc(STATE.name)}</b></span><span><b>${STATE.entries.length}</b> entries</span><span><b>${tasks}</b> tasks</span><span><b>${closes}</b> closed</span>`;
+  if (chain && chain.head && !STATE.error) st += `<span>head <b>${esc(chain.head.slice(0, 12))}</b></span>`;
+  if (STATE.error) st += `<span>${esc(STATE.error.why)}${STATE.entries.length ? "; the balance below covers the lines before the break" : ""}</span>`;
+  if (chain && chain.empty && !STATE.error) st += "<span>the ledger is empty</span>";
+  $("status").innerHTML = st;
+  $("series").innerHTML = viewSeries(chain);
+  $("asof").textContent = "as of " + asOf.replace("T", " ").replace("Z", " UTC");
+
+  const c = (s) => R.filter((r) => r.status === s).length;
+  $("tally").innerHTML = [["skipped", "skipped steps"], ["amount", "amount mismatches"], ["unowed", "runs nobody owed"], ["open", "open, not yet late"]]
+    .map(([s, l]) => `<div><span class="n">${c(s)}</span><span class="l">${l}</span></div>`).join("");
+  $("imbalances").innerHTML = viewImbalances(R);
+
+  const tb = viewTrialBalance(R, $("onlybad").checked, VIEW.tbAll);
+  $("tb").tBodies[0].innerHTML = tb.html;
+  moreButton("tbmore", tb, VIEW.tbAll, "lines");
+  $("agents").tBodies[0].innerHTML = viewAgents(R);
+  const tk = viewTasks(R, STATE.entries, VIEW.taskAll);
+  $("tasks").tBodies[0].innerHTML = tk.html;
+  moreButton("taskmore", tk, VIEW.taskAll, "tasks");
+  const tl = viewTimelines(R, STATE.entries, VIEW.tlLimit);
+  $("timelines").innerHTML = tl.html || '<p class="note" style="margin-top:.8rem">No tasks to draw.</p>';
+  const tlb = $("tlmore");
+  tlb.hidden = tl.total <= tl.shown;
+  tlb.textContent = `Draw ${Math.min(CAP.tl, tl.total - tl.shown)} more of ${tl.total - tl.shown} remaining tasks`;
+
+  renderTruth(R);
+  const ms = performance.now() - t0;
+  document.documentElement.dataset.renderMs = ms.toFixed(1);
+  return { R, ms };
+}
+function moreButton(id, v, all, noun) {
+  const b = $(id);
+  b.hidden = v.total <= CAP[id === "tbmore" ? "tb" : "tasks"];
+  b.textContent = all ? `Show the first ${CAP[id === "tbmore" ? "tb" : "tasks"]} ${noun} only` : `Show all ${v.total} ${noun} (${v.total - v.shown} hidden)`;
+  b.setAttribute("aria-expanded", all ? "true" : "false");
+}
+function renderTruth(R) {
+  const T = STATE.truth;
+  $("truthsec").hidden = !T;
+  $("c2line").hidden = !T;
+  if (!T) return;
+  const flagged = new Set(R.filter((r) => r.status !== "ok").map((r) => r.task));
+  $("truth").tBodies[0].innerHTML = T.requisitions.map((t) => {
+    let detail = t.step ? t.step : "";
+    if (t.condition === "C1") detail += `: posted ${fmt([t.posted])} against ${fmt([t.true_amount])}`;
+    if (t.condition === "C2") detail = `quote ${fmt([t.true_amount])}, both books ${fmt([t.assigned_and_posted])}`;
+    if (t.condition === "O2") detail += `; diary says "${t.diary_claim}"`;
+    const seen = flagged.has(t.task_id);
+    const verdict = t.condition === "N" ? (seen ? '<span class="stamp blue">false alarm</span>' : '<span class="stamp">clean, as it should be</span>')
+      : t.condition === "C2" ? '<span class="stamp">not shown: both books agree</span>'
+      : seen ? '<span class="stamp blue">shown</span>' : '<span class="stamp blue">missed</span>';
+    return `<tr><td class="task">${esc(t.task_id)}</td><td>${esc(t.label)}</td><td class="wrapcell">${esc(detail)}</td><td>${verdict}</td></tr>`;
+  }).join("");
+  const c2 = T.requisitions.find((t) => t.condition === "C2");
+  if (c2) { $("c2task").textContent = c2.task_id; $("c2quote").textContent = fmt([c2.true_amount]); $("c2posted").textContent = fmt([c2.assigned_and_posted]); }
+}
+
+// Load one or more files: [{name, raw}]. On a break, keep the lines that verified before it.
+async function loadFiles(files, truth, label, quiet) {
+  const token = ++TOKEN;
+  if (!quiet) RESTORE = () => loadFiles(files, truth, label, true);
+  const t0 = performance.now();
+  VIEW.tbAll = false; VIEW.taskAll = false; VIEW.tlLimit = CAP.tl;
+  $("status").innerHTML = `<span>reading ${esc(label)}</span>`;
+  let parsed = [], error = null, chain = null;
+  try {
+    parsed = files.map((f) => ({ name: f.name, entries: parse(f.raw, f.name) }));
+    chain = await verifySeries(parsed, async (i, n) => {
+      if (token !== TOKEN) throw new Error("superseded");
+      $("status").innerHTML = `<span>checking the chain: line ${i.toLocaleString("en-US")} of ${n.toLocaleString("en-US")}</span>`;
+      await new Promise((r) => setTimeout(r, 0));
+    });
+  } catch (e) {
+    if (token !== TOKEN) return;
+    error = e instanceof LedgerFault ? e : new LedgerFault("", "?", String(e && e.message || e));
+  }
+  if (token !== TOKEN) return;
+  const ordered = parsed.filter((f) => f.entries.length).sort((a, b) => (a.entries[0].seq || 0) - (b.entries[0].seq || 0));
+  let entries = [];
+  if (!error) entries = ordered.flatMap((f) => f.entries);
+  else {
+    // keep only what verified: whole files before the broken one, and lines before the broken line
+    for (const f of ordered) {
+      if (error.file === f.name) { const n = Number(error.line); if (n > 1) entries = entries.concat(f.entries.slice(0, n - 1)); break; }
+      entries = entries.concat(f.entries);
+    }
+    entries = entries.filter((e) => !structureProblem(e));
+  }
+  STATE = { entries, truth: error ? null : truth, chain, name: label, error };
+  const r = render();
+  const total = performance.now() - t0;
+  if (!quiet) document.documentElement.dataset.loadMs = total.toFixed(1);
+  return r;
+}
+
+// -- inputs: file picker, drag and drop, paste, ?ledger=, reset
+let PICK = 0;   // the newest pick wins, however long an older one takes to read
+async function readFileList(list) {
+  const pick = ++PICK;
+  TOKEN++;        // also cancels a load already under way
+  const files = [];
+  for (const f of list) {   // in the order picked
+    if (f.size > 64 * 1024 * 1024) { $("status").innerHTML = `<span class="stamp">too large</span><span>${esc(f.name)} is larger than 64 MB; split it or use the command line</span>`; return; }
+    const raw = await f.text();
+    if (pick !== PICK) return;
+    files.push({ name: f.name, raw });
+  }
+  if (files.length && pick === PICK) await loadFiles(files, null, files.map((f) => f.name).join(" + "));
+}
+$("file").addEventListener("change", (ev) => { readFileList([...ev.target.files]); });
+const drop = $("drop");
+["dragenter", "dragover"].forEach((t) => drop.addEventListener(t, (ev) => { ev.preventDefault(); drop.classList.add("over"); }));
+["dragleave", "drop"].forEach((t) => drop.addEventListener(t, () => drop.classList.remove("over")));
+drop.addEventListener("drop", (ev) => { ev.preventDefault(); if (ev.dataTransfer && ev.dataTransfer.files.length) readFileList([...ev.dataTransfer.files]); });
+document.addEventListener("dragover", (ev) => ev.preventDefault());   // a stray drop must not navigate away
+document.addEventListener("drop", (ev) => ev.preventDefault());
+$("readpaste").addEventListener("click", () => {
+  let raw = $("paste").value;
+  if (raw && !raw.endsWith("\n")) raw += "\n";   // a paste rarely ends with a newline
+  loadFiles([{ name: "pasted", raw }], null, `pasted text (${raw.length.toLocaleString("en-US")} characters)`);
+});
+$("onlybad").addEventListener("change", render);
+$("tbmore").addEventListener("click", () => { VIEW.tbAll = !VIEW.tbAll; render(); $("tbmore").focus(); });
+$("taskmore").addEventListener("click", () => { VIEW.taskAll = !VIEW.taskAll; render(); $("taskmore").focus(); });
+$("tlmore").addEventListener("click", () => {
+  VIEW.tlLimit += CAP.tl; render();
+  if (!$("tlmore").hidden) { $("tlmore").focus(); return; }
+  const last = $("timelines").lastElementChild?.querySelector("p");   // the button is gone: move focus to the last task drawn
+  if (last) { last.setAttribute("tabindex", "-1"); last.focus(); }
+});
+$("reset").addEventListener("click", () => { $("file").value = ""; $("paste").value = ""; $("onlybad").checked = false; loadSample(); });
+
+$("cols").innerHTML = COLUMN_NOTES.map(([k, v]) => `<dt>${esc(k)}</dt><dd>${esc(v)}</dd>`).join("");
+
+async function loadSample() {
+  let raw = null, truth = null;
+  if (location.protocol !== "file:") {
+    try {
+      const [a, b] = await Promise.all([fetch("sample-ledger.jsonl"), fetch("sample-truth.json")]);
+      if (a.ok && b.ok) { raw = await a.text(); truth = await b.json(); }
+    } catch (e) { console.warn("[ledger] could not fetch the sample over http; using the inlined copy", e); }
+  }
+  if (raw === null && window.SAMPLE_LEDGER) { raw = window.SAMPLE_LEDGER; truth = window.SAMPLE_TRUTH; }
+  if (raw === null) { $("status").innerHTML = "<span>No sample ledger found. Run python3 demo/make_sample.py.</span>"; return; }
+  return loadFiles([{ name: "sample-ledger.jsonl", raw }], truth, "sample-ledger.jsonl");
+}
+// ?ledger=path (repeatable for a rotated series). Each value is trimmed and parsed against this page;
+// anything that does not land on this page's own origin is refused with a visible warning.
+function safeLedgerURL(raw, base) {
+  const p = String(raw).trim();
+  if (!p) return null;
+  let u;
+  try { u = new URL(p, base); } catch (e) { return null; }
+  const b = new URL(base);
+  if (b.protocol !== "http:" && b.protocol !== "https:") return null;   // from disk nothing can be fetched
+  if (u.origin !== b.origin || u.username || u.password) return null;
+  return u.href;
+}
+function requestedLedgers() {
+  const ok = [], refused = [];
+  for (const p of new URLSearchParams(location.search).getAll("ledger")) {
+    const u = safeLedgerURL(p, location.href);
+    if (u) ok.push(u); else refused.push(p);
+  }
+  return { ok, refused };
+}
+function showWarning(what, detail) {
+  RESTORE = () => showWarning(what, detail);
+  STATE = { entries: [], truth: null, chain: null, name: "", error: null };
+  render();
+  $("status").innerHTML = `<span class="stamp">${esc(what)}</span><span>${esc(detail)}</span><span>Use the file picker, or go back to the sample.</span>`;
+  console.warn("[ledger] " + what + ": " + detail);
+}
+async function loadRequested(urls) {
+  try {
+    const files = await Promise.all(urls.map(async (u) => {
+      const r = await fetch(u);
+      if (!r.ok) throw new Error(decodeURIComponent(new URL(u).pathname) + " answered HTTP " + r.status);
+      return { name: decodeURIComponent(new URL(u).pathname.split("/").pop()), raw: await r.text() };
+    }));
+    return loadFiles(files, null, files.map((f) => f.name).join(" + "));
+  } catch (e) {
+    showWarning("could not open the requested ledger", e.message);
+  }
+}
+
+// -- console self-check: every feature checks itself against values Python recorded
+async function selfCheck() {
+  const results = [];
+  const check = async (name, fn) => {
+    let pass = false, detail = "";
+    try { const r = await fn(); pass = r === true || (r && r.pass === true); detail = r && r.detail || ""; }
+    catch (e) { detail = String(e && e.message || e); }
+    results.push({ name, pass, detail });
+  };
+  const T = window.SAMPLE_TRUTH, F = window.FIXTURES || {};
+  const statusKeys = (R) => R.map((r) => `${r.task}/${r.agent}/${r.step}:${r.status}:${r.reason || ""}`).sort();
+  const sortedPy = (xs) => xs.slice().sort();
+
+  await check("sample balance matches Python", () => {
+    const exp = T.expected_balance, R = rows(parse(window.SAMPLE_LEDGER), exp.as_of);
+    return ["skipped", "amount", "unowed", "open"].every((s) => JSON.stringify(R.filter((r) => r.status === s).map(keyOf).sort()) === JSON.stringify(exp[s]));
+  });
+  await check("sample chain head matches Python", async () => (await verifySeries([{ name: "s", entries: parse(window.SAMPLE_LEDGER) }])).head === T.expected_balance.head);
+  await check("amounts compare as decimals", () => normAmt("120.50") === normAmt("120.5") && !sameAmt("5955", "9555") && sameAmt("-0", "0") && sameAmt(null, null) && !sameAmt("1", null));
+  await check("random ledger: every row's status matches Python", () => {
+    const R = rows(parse(F.property.raw), F.property.as_of);
+    return JSON.stringify(statusKeys(R)) === JSON.stringify(sortedPy(F.property.rows));
+  });
+  await check("random ledger: chain head matches Python", async () => (await verifySeries([{ name: "p", entries: parse(F.property.raw) }])).head === F.property.head);
+  await check("rotated series, given out of order, verifies with Python's head", async () => {
+    const v = await verifySeries(F.rotated.segments.map((s) => ({ name: s.name, entries: parse(s.raw, s.name) })));
+    return v.ok === true && v.head === F.rotated.head && v.files.map((f) => f.name).join() === "series.000001.jsonl,series.000002.jsonl,series.jsonl";
+  });
+  await check("rotation: each carry line holds the seal head before it", async () => {
+    const v = await verifySeries(F.rotated.segments.map((s) => ({ name: s.name, entries: parse(s.raw, s.name) })));
+    const carries = F.rotated.segments.map((s) => parse(s.raw)[0]).filter((e) => e.book === "carry").map((e) => e.head).sort();
+    return JSON.stringify(v.seals.map((s) => s.head)) === JSON.stringify(F.rotated.seals) && JSON.stringify(carries) === JSON.stringify(F.rotated.seals.slice().sort());
+  });
+  await check("rotated series: balance across segments matches Python", () => {
+    const es = F.rotated.segments.map((s) => parse(s.raw)).sort((a, b) => a[0].seq - b[0].seq).flat();
+    return JSON.stringify(statusKeys(rows(es, F.rotated.as_of))) === JSON.stringify(sortedPy(F.rotated.rows));
+  });
+  await check("a missing middle segment is caught", async () => {
+    const segs = F.rotated.segments.filter((s) => s.name !== "series.000002.jsonl");
+    try { await verifySeries(segs.map((s) => ({ name: s.name, entries: parse(s.raw, s.name) }))); return false; }
+    catch (e) { return e instanceof LedgerFault; }
+  });
+  await check("one later segment alone verifies from its carry head", async () => {
+    const s = F.rotated.segments.find((x) => x.name === "series.jsonl");
+    const v = await verifySeries([{ name: s.name, entries: parse(s.raw) }]);
+    return v.ok === true && v.anchor && v.anchor.head === F.rotated.seals[1];
+  });
+  await check("Unicode names hash to Python's bytes (U+2028, NEL, emoji, RTL)", async () => {
+    const es = parse(F.unicode.raw);
+    const v = await verifySeries([{ name: "u", entries: es }]);
+    return es.length === F.unicode.entries && v.head === F.unicode.head;
+  });
+  await check("markup in every field renders as text", async () => {
+    const es = parse(F.hostile.raw);
+    await verifySeries([{ name: "h", entries: es }]);
+    const R = rows(es, "2026-10-05T00:00:00Z");
+    const html = viewImbalances(R) + viewTrialBalance(R, false, true).html + viewAgents(R) + viewTasks(R, es, true).html + viewTimelines(R, es, 99).html;
+    const doc = new DOMParser().parseFromString(`<table><tbody>${html}</tbody></table>`, "text/html");
+    return doc.querySelectorAll("script,img,iframe,[onerror],[onload]").length === 0 && html.includes("&lt;script&gt;");
+  });
+  await check("a forged amount with a valid hash is refused", async () => {
+    try { await verifySeries([{ name: "f", entries: parse(F.forged.raw) }]); return false; }
+    catch (e) { return /amount is not a plain decimal string/.test(e.message); }
+  });
+  await check("a partial last line is refused", () => { try { parse(window.SAMPLE_LEDGER.slice(0, -5)); return false; } catch (e) { return /partial last line/.test(e.message); } });
+  await check("CRLF line endings and a BOM are read", async () => {
+    const v = await verifySeries([{ name: "c", entries: parse("﻿" + window.SAMPLE_LEDGER.replace(/\n/g, "\r\n")) }]);
+    return v.head === T.expected_balance.head;
+  });
+  await check("an edited line is caught at that line", async () => {
+    const ls = window.SAMPLE_LEDGER.split("\n");
+    if (!ls[4].includes('"by":"commissioning"')) return { pass: false, detail: "line 5 is not an obligation" };
+    ls[4] = ls[4].replace('"by":"commissioning"', '"by":"commissioning2"');
+    try { await verifySeries([{ name: "e", entries: parse(ls.join("\n")) }]); return false; }
+    catch (e) { return e.line === 5; }
+  });
+  await check("per-agent lines add up to the trial balance", () => {
+    const R = rows(parse(window.SAMPLE_LEDGER), T.expected_balance.as_of), A = byAgent(R);
+    return A.reduce((n, a) => n + a.lines, 0) === R.length && A.reduce((n, a) => n + a.owed, 0) === R.reduce((n, r) => n + r.owed, 0);
+  });
+  await check("per-task view counts every task once", () => {
+    const es = parse(window.SAMPLE_LEDGER), R = rows(es, T.expected_balance.as_of), tasks = byTask(R, es);
+    return tasks.length === new Set(R.map((r) => r.task)).size && tasks.find((t) => t.task === "R-0110").closed === true;
+  });
+  await check("timeline draws one mark per owe, ran and close line", () => {
+    const es = parse(window.SAMPLE_LEDGER), R = rows(es, T.expected_balance.as_of), tl = viewTimelines(R, es, 999);
+    const doc = new DOMParser().parseFromString(tl.html, "text/html");
+    return doc.querySelectorAll("svg rect, svg polygon, svg circle, svg line.close").length === es.filter((e) => ["owe", "ran", "close"].includes(e.book)).length;
+  });
+  await check("column panel explains every table heading", () => {
+    const heads = new Set([...document.querySelectorAll("#tb th, #agents th, #tasks th")].map((th) => th.textContent.trim()));
+    const covered = COLUMN_NOTES.flatMap(([k]) => k.split(", "));
+    return [...heads].every((h) => covered.includes(h) || STATUSES.includes(h));
+  });
+  await check("blind-spot note quotes 0 of 1,044 with its source", () => /0 of 1,044/.test(document.querySelector(".blind").textContent) && /campaign page/.test(document.querySelector(".blind .src").textContent));
+  await check("?ledger= takes only same-origin paths, after trimming and URL parsing", () => {
+    const base = "http://127.0.0.1:8000/demo/index.html";
+    const good = ["fixtures/a.jsonl", " fixtures/a.jsonl", "\tfixtures/a.jsonl", "/demo/x.jsonl", "http://127.0.0.1:8000/x.jsonl"];
+    const badOnes = [" //evil.example/x.jsonl", "\t//evil.example/x.jsonl", "//evil.example/x.jsonl", "\\\\evil.example\\x.jsonl",
+      "/\\evil.example/x.jsonl", "data:text/plain,{}", "javascript:alert(1)", "https://evil.example/x.jsonl", "http://u:p@127.0.0.1:8000/x", "", "   "];
+    const g = good.every((p) => safeLedgerURL(p, base)), b = badOnes.every((p) => safeLedgerURL(p, base) === null);
+    const disk = safeLedgerURL("fixtures/a.jsonl", "file:///x/index.html") === null;
+    return { pass: g && b && disk, detail: g ? (b ? "" : "a bad value got through: " + badOnes.filter((p) => safeLedgerURL(p, base)).join(" | ")) : "a good value was refused" };
+  });
+  await check("first failing line is named: amount tamper on line 3 plus deletion of line 6", async () => {
+    const ls = window.SAMPLE_LEDGER.split("\n");
+    if (!ls[2].includes('"amount":"1840"')) return { pass: false, detail: "line 3 carries no 1840 amount" };
+    ls[2] = ls[2].replace('"amount":"1840"', '"amount":"1841"');
+    ls.splice(5, 1);
+    try { await verifySeries([{ name: "t", entries: parse(ls.join("\n"), "t") }]); return false; }
+    catch (e) { return { pass: e.line === 3 && /hash does not match/.test(e.why), detail: e.message }; }
+  });
+  await check("the display stops at the last verified line", async () => {
+    const ls = window.SAMPLE_LEDGER.split("\n");
+    ls[2] = ls[2].replace('"amount":"1840"', '"amount":"1841"');
+    const restore = RESTORE, ms = document.documentElement.dataset.renderMs;
+    await loadFiles([{ name: "t.jsonl", raw: ls.join("\n") }], null, "t.jsonl", true);
+    const kept = STATE.entries.length, err = STATE.error;
+    if (restore) await restore();   // put back whatever the page was showing
+    if (ms) document.documentElement.dataset.renderMs = ms;
+    return { pass: kept === 2 && err && err.line === 3, detail: "kept " + kept };
+  });
+  await check("a timeline of 140,000 lines in one task draws without overflowing the stack", () => {
+    const ev = [];
+    for (let i = 0; i < 140000; i++) ev.push({ book: i % 2 ? "ran" : "owe", agent: "a", step: "s" + (i % 7), amount: null, ts: new Date(Date.UTC(2026, 9, 1) + i * 1000).toISOString(), seq: i + 1 });
+    const svg = timelineSVG("T", ev, new Set());
+    return svg.startsWith("<svg") && svg.includes("70000 owe lines");
+  });
+  await check("seal and carry names must be bare segment names", () => {
+    const good = ["ledger.000001.jsonl", "plain.000012"], bad = ["../x.000001.jsonl", "/abs.000001.jsonl", "a/b.000001.jsonl", "a\\b.000001.jsonl", "..000001.jsonl", "x.jsonl", ".h.000001.jsonl"];
+    return good.every(segmentOk) && !bad.some(segmentOk);
+  });
+  await check("the empty ledger reads as balanced", async () => { const v = await verifySeries([{ name: "e", entries: parse("") }]); return v.ok === true && rows([], "2026-10-05T00:00:00Z").length === 0; });
+
+  const passed = results.filter((r) => r.pass).length;
+  for (const r of results) console[r.pass ? "log" : "error"](`[self-check] ${r.pass ? "pass" : "FAIL"}: ${r.name}${r.detail ? " (" + r.detail + ")" : ""}`);
+  console[passed === results.length ? "log" : "error"](`[self-check] ${passed} of ${results.length} checks pass`);
+  window.SELFCHECK = results;
+  document.documentElement.dataset.selfcheckCount = String(results.length);
+  document.documentElement.dataset.selfcheckPassed = String(passed);
+  document.documentElement.dataset.selfcheck = passed === results.length ? "pass" : "fail";
+  const failed = results.filter((r) => !r.pass).map((r) => r.name);
+  if (failed.length) document.documentElement.dataset.selfcheckFailed = failed.join(" | ");
+  if (new URLSearchParams(location.search).has("timing")) {
+    const d = document.documentElement.dataset;   // read by tests/smoke.sh through the debugging endpoint
+    document.title = `DL done load=${d.loadMs} render=${d.renderMs} selfcheck=${d.selfcheck} ${passed}/${results.length}`;
+  }
+}
+
+// ?paste=relative/path fills the paste box from a file and reads it, as a person pasting would (tests/smoke.sh)
+async function pasteRequested(p) {
+  const u = safeLedgerURL(p, location.href);
+  if (!u) return showWarning("refused ?paste=", `${p} is not a file on this site`);
+  const r = await fetch(u);
+  if (!r.ok) return showWarning("could not open the requested ledger", `${p} answered HTTP ${r.status}`);
+  $("paste").value = await r.text();
+  $("pastebox").open = true;
+  $("readpaste").click();
+  while (!STATE.name.startsWith("pasted")) await new Promise((res) => setTimeout(res, 20));
+}
+
+(async () => {
+  const req = requestedLedgers();
+  const paste = new URLSearchParams(location.search).get("paste");
+  try {
+    if (paste) await pasteRequested(paste);
+    else if (req.refused.length) showWarning("refused ?ledger=", `${req.refused.join(", ")} is not a file on this site; nothing was loaded`);
+    else if (req.ok.length) await loadRequested(req.ok);
+    else await loadSample();
+  } catch (e) {
+    console.error("[ledger] load failed", e);
+    $("status").innerHTML = `<span class="stamp">could not load</span><span>${esc(e.message)}</span>`;
+  }
+  if (window.SAMPLE_TRUTH && window.FIXTURES) await selfCheck();
+  else { console.warn("[self-check] no sample truth or fixtures loaded; run python3 demo/make_sample.py"); document.documentElement.dataset.selfcheck = "fail"; }
+})();
+</script>
+</body>
+</html>
